@@ -90,66 +90,23 @@ async function getSingleQuestion(req, res) {
 }
 
 async function getAllQuestions(req, res) {
-  const questionid = req.params.questionId;
-
   try {
-    const [rows] = await dbConnection.query(
-      `SELECT 
-          q.questionid, 
-          q.title, 
-          q.description, 
-          q.createdAt AS question_createdAt,
-          u2.username as question_username,
-          a.answerid, 
-          a.userid AS answer_userid, 
-          a.answer,
-          a.createdAt,
-          u.username as answer_username
-       FROM 
-          questions q   
-       LEFT JOIN 
-          answers a ON q.questionid = a.questionid
-          LEFT JOIN users u on u.userid = a.userid
-          left join users u2 on u2.userid = q.userid
-       WHERE 
-          q.questionid = ?
-          order by a.createdAt desc
-          `,
-      [questionid]
-    );
+    // Query the database to fetch all questions
+    const [questions] = await dbConnection.query("SELECT * FROM questions"); // Fetch data from 'questions' table
 
-    // Check if the question exists
-    if (rows.length === 0) {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json({ message: "Question not found" });
-    }
-
-    // Reshape the data to include answers under the question
-    const questionDetails = {
-      id: rows[0].questionid,
-      title: rows[0].title,
-      description: rows[0].description,
-      qtn_createdAt: rows[0].question_createdAt,
-      qtn_username: rows[0].question_username,
-      answers: rows
-        .map((answer) => ({
-          answerid: answer.answerid,
-          userid: answer.answer_userid,
-          username: answer.answer_username,
-          answer: answer.answer,
-          createdAt: answer.createdAt,
-        }))
-        .filter((answer) => answer.answerid !== null), // Filter out any null answers
-    };
-
-    res.status(StatusCodes.OK).json(questionDetails);
+    // Send the response JSON payload
+    res.status(StatusCodes.OK).json({
+      success: true,
+      count: questions.length, // Number of questions
+      data: questions, // Array of questions
+    });
   } catch (error) {
+    // Handle server errors
     console.error(error);
-    res
-      .status(500)
-      .json({ message: "Error fetching question details" + error });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 }
-
 module.exports = { getSingleQuestion, postQuestion, getAllQuestions };
